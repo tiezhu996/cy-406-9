@@ -1,9 +1,12 @@
 import {
+  analyzeImportConflicts,
   deleteRecord,
   exportAllData,
+  exportByType,
   getAllRecords,
   getRecord,
   importAllData,
+  importByType,
   putRecord,
   StoreName,
   StoreValue
@@ -15,7 +18,10 @@ export const persistenceApi = {
   save: putRecord,
   remove: deleteRecord,
   exportAll: exportAllData,
-  importAll: importAllData
+  importAll: importAllData,
+  exportByType,
+  analyzeImportConflicts,
+  importByType
 };
 
 export function createStoreApi<S extends StoreName>(storeName: S) {

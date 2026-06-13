@@ -1,20 +1,19 @@
 import { Button, Input, Message, Space, Typography } from '@arco-design/web-react';
 import { IconExport, IconImport, IconPlus } from '@arco-design/web-react/icon';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CategoryFilter, TemplateCard } from '../components/common';
+import { CategoryFilter, ImportExportDialog, TemplateCard } from '../components/common';
 import { useClauseStore } from '../stores/clause';
 import { useInstanceStore } from '../stores/instance';
 import { useTemplateStore } from '../stores/template';
 import { TemplateCategory, TEMPLATE_CATEGORY_LABELS } from '../types/enums';
-import { ExportPayload, exportAllData, importAllData } from '../utils/db';
-import { downloadJson, readJsonFile } from '../utils/export';
 
 export function TemplateList() {
   const navigate = useNavigate();
-  const importInputRef = useRef<HTMLInputElement>(null);
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState('all');
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'export' | 'import'>('export');
   const { templates, loadTemplates, createTemplate, duplicateTemplate, deleteTemplate } = useTemplateStore();
   const { createFromTemplate, loadInstances } = useInstanceStore();
   const { loadClauses } = useClauseStore();
@@ -56,28 +55,19 @@ export function TemplateList() {
     navigate(`/instances/${instance.id}`);
   };
 
-  const handleExport = async () => {
-    downloadJson(await exportAllData());
-    Message.success('已导出本地数据');
+  const handleOpenExport = () => {
+    setDialogMode('export');
+    setDialogVisible(true);
   };
 
-  const handleImport = async (file?: File) => {
-    if (!file) {
-      return;
-    }
+  const handleOpenImport = () => {
+    setDialogMode('import');
+    setDialogVisible(true);
+  };
 
-    try {
-      const payload = await readJsonFile<ExportPayload>(file);
-      await importAllData(payload);
-      await Promise.all([loadTemplates(), loadInstances(), loadClauses()]);
-      Message.success('导入完成');
-    } catch {
-      Message.error('导入失败，请确认 JSON 格式');
-    } finally {
-      if (importInputRef.current) {
-        importInputRef.current.value = '';
-      }
-    }
+  const handleImportComplete = async () => {
+    await Promise.all([loadTemplates(), loadInstances(), loadClauses()]);
+    Message.success('导入完成');
   };
 
   return (
@@ -88,22 +78,15 @@ export function TemplateList() {
           <Typography.Text type="secondary">管理合同模板，按分类、标签和关键词快速定位。</Typography.Text>
         </div>
         <Space wrap>
-          <Button icon={<IconImport />} onClick={() => importInputRef.current?.click()}>
+          <Button icon={<IconImport />} onClick={handleOpenImport}>
             导入
           </Button>
-          <Button icon={<IconExport />} onClick={handleExport}>
+          <Button icon={<IconExport />} onClick={handleOpenExport}>
             导出
           </Button>
           <Button type="primary" icon={<IconPlus />} onClick={createNewTemplate}>
             新建模板
           </Button>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json"
-            className="visually-hidden"
-            onChange={(event) => void handleImport(event.target.files?.[0])}
-          />
         </Space>
       </div>
 
@@ -126,6 +109,13 @@ export function TemplateList() {
       </div>
 
       {!filteredTemplates.length && <div className="empty-state">没有匹配的模板。</div>}
+
+      <ImportExportDialog
+        visible={dialogVisible}
+        defaultMode={dialogMode}
+        onClose={() => setDialogVisible(false)}
+        onImportComplete={handleImportComplete}
+      />
     </section>
   );
 }
